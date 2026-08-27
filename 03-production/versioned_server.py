@@ -17,11 +17,11 @@ from __future__ import annotations
 import json
 from datetime import datetime, timezone
 
-from mcp.server.fastmcp import FastMCP
+from mcp.server.mcpserver import MCPServer
 
 SERVER_VERSION = "2.0.0"
 
-mcp = FastMCP(
+mcp = MCPServer(
     "weather-v2",
     instructions=f"Weather MCP Server v{SERVER_VERSION}. "
     "Hỗ trợ get_weather (v1, backward compat) và get_weather_v2 (chi tiết hơn).",

@@ -21,7 +21,7 @@ import os
 
 from mcp.server.auth.provider import AccessToken, TokenVerifier
 from mcp.server.auth.settings import AuthSettings
-from mcp.server.fastmcp import FastMCP
+from mcp.server.mcpserver import MCPServer
 
 # --- Token store (production: dùng DB, Redis, hoặc JWT verification) ---
 VALID_TOKENS: dict[str, str] = {
@@ -45,10 +45,8 @@ class StaticTokenVerifier(TokenVerifier):
 
 
 # --- MCP Server — logic tool không biết gì về auth --------------------
-mcp = FastMCP(
+mcp = MCPServer(
     "weather-secure",
-    host="0.0.0.0",
-    port=8000,
     auth=AuthSettings(
         issuer_url="http://localhost:8000",
         resource_server_url="http://localhost:8000",
@@ -70,4 +68,4 @@ def get_weather(city: str) -> str:
 
 
 if __name__ == "__main__":
-    mcp.run(transport="streamable-http")
+    mcp.run(transport="streamable-http", host="0.0.0.0", port=8000)
