@@ -49,9 +49,9 @@ uv run python weather.py
 ```bash
 cd mcp-client
 
-# Create .env file with your Google API key
-# Get free key from: https://aistudio.google.com/apikey
-echo "GOOGLE_API_KEY=your_google_api_key_here" > .env
+# Create .env file with your OpenAI API key
+# Get key from: https://platform.openai.com/api-keys
+echo "OPENAI_API_KEY=your_openai_api_key_here" > .env
 ```
 
 ### 3. Install Dependencies
@@ -94,6 +94,8 @@ mcp-client/
 In `weather_agent/agent.py`:
 
 ```python
+from google.adk.models.lite_llm import LiteLlm
+
 MCP_SERVER_URL = "http://localhost:8085/mcp"
 
 connection_params = StreamableHTTPConnectionParams(
@@ -103,7 +105,7 @@ connection_params = StreamableHTTPConnectionParams(
 
 root_agent = Agent(
     name="weather_agent",
-    model="gemini-2.5-flash",
+    model=LiteLlm(model="openai/gpt-4o-mini"),  # OpenAI qua LiteLLM
     tools=[weather_tools],
 )
 ```
@@ -132,7 +134,7 @@ Fix the connection and restart ADK web.
 
 Create `.env` file:
 ```bash
-GOOGLE_API_KEY=your_gemini_api_key
+OPENAI_API_KEY=your_openai_api_key
 ```
 
 ## Resources

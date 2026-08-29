@@ -14,20 +14,20 @@ def check_environment():
     env_file = Path(".env")
     if not env_file.exists():
         print("❌ .env file not found")
-        print("   Run: echo 'GOOGLE_API_KEY=your_key' > .env")
+        print("   Run: echo 'OPENAI_API_KEY=your_key' > .env")
         return False
-    
-    # Check if GOOGLE_API_KEY is set
+
+    # Check if OPENAI_API_KEY is set
     from dotenv import load_dotenv
     load_dotenv()
-    
-    api_key = os.getenv("GOOGLE_API_KEY")
-    if not api_key or api_key == "your_google_api_key_here":
-        print("❌ GOOGLE_API_KEY not configured in .env")
-        print("   Get key from: https://aistudio.google.com/apikey")
+
+    api_key = os.getenv("OPENAI_API_KEY")
+    if not api_key or api_key == "your_openai_api_key_here":
+        print("❌ OPENAI_API_KEY not configured in .env")
+        print("   Get key from: https://platform.openai.com/api-keys")
         return False
-    
-    print(f"✅ GOOGLE_API_KEY configured ({api_key[:10]}...)")
+
+    print(f"✅ OPENAI_API_KEY configured ({api_key[:10]}...)")
     return True
 
 def check_dependencies():
@@ -36,9 +36,9 @@ def check_dependencies():
     
     required_packages = [
         ("google.adk", "Google ADK"),
-        ("google.generativeai", "Google Generative AI"),
+        ("litellm", "LiteLLM"),
+        ("openai", "OpenAI"),
         ("mcp", "MCP"),
-        ("fastmcp", "FastMCP"),
         ("dotenv", "python-dotenv"),
         ("httpx", "httpx"),
     ]
@@ -54,7 +54,7 @@ def check_dependencies():
     
     if not all_installed:
         print("\n   Install with: uv sync")
-        print("   Or: pip install google-adk google-generativeai mcp fastmcp python-dotenv httpx")
+        print("   Or: pip install google-adk litellm openai mcp python-dotenv httpx")
     
     return all_installed
 
@@ -82,28 +82,30 @@ def check_mcp_server():
     """Check if MCP server is accessible"""
     print("\n🔍 Checking MCP server connectivity...")
     
-    server_url = "https://weather-mcp-server-oze7nwnjba-as.a.run.app"
-    
+    server_url = "http://localhost:8085/mcp"
+
     try:
         import httpx
         import asyncio
-        
+
         async def test_connection():
             async with httpx.AsyncClient() as client:
                 response = await client.get(server_url, timeout=10.0)
                 return response.status_code
-        
+
         status_code = asyncio.run(test_connection())
-        
-        if status_code in [200, 404]:  # 404 is expected for GET on MCP endpoint
+
+        # 400/405/406 = server đang chạy nhưng GET không phải cách gọi MCP hợp lệ → vẫn OK
+        if status_code in [200, 400, 404, 405, 406]:
             print(f"✅ MCP server reachable at {server_url}")
             return True
         else:
             print(f"⚠️  MCP server returned status {status_code}")
             return False
-            
+
     except Exception as e:
-        print(f"❌ Cannot reach MCP server: {e}")
+        print(f"⚠️  Cannot reach MCP server at {server_url}: {e}")
+        print("   Khởi động server trước: cd ../mcp-server && uv run python weather.py")
         return False
 
 def check_agent_import():
@@ -142,8 +144,7 @@ def main():
     if all(checks):
         print("✅ All checks passed!")
         print("\n🚀 Ready to start!")
-        print("   Run: ./start_agent.sh")
-        print("   Or:  uv run adk web")
+        print("   Run: uv run adk web")
         print("\n📍 Then open: http://localhost:8000")
         return 0
     else:

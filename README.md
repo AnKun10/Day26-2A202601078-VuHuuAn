@@ -9,7 +9,7 @@ day26-mcp/
 ├── README.md                ← Bạn đang đọc file này
 ├── requirements.txt         ← pip install -r requirements.txt
 │
-├── 01-function-calling/     ← Bước 1: Function Calling thuần (Gemini SDK)
+├── 01-function-calling/     ← Bước 1: Function Calling thuần (OpenAI SDK)
 │   ├── README.md
 │   └── weather_function_calling.py
 │
@@ -18,14 +18,26 @@ day26-mcp/
 │   ├── weather_server.py
 │   └── weather_client.py
 │
-└── 03-production/           ← Bước 3: Auth, Tool Registry, Versioning
-    ├── README.md
-    ├── auth_server.py
-    ├── auth_client.py
-    ├── registry.json
-    ├── registry_client.py
-    └── versioned_server.py
+├── 03-production/           ← Bước 3: Auth, Tool Registry, Versioning
+│   ├── README.md
+│   ├── auth_server.py
+│   ├── auth_client.py
+│   ├── registry.json
+│   ├── registry_client.py
+│   ├── versioned_server.py
+│   └── versioned_client.py
+│
+├── 04-lab/                  ← Bước 4: Weather Agent thật (Google ADK + MCP HTTP)
+│   ├── README.md
+│   ├── mcp-server/          ← FastMCP server (WeatherAPI hoặc DEMO MODE)
+│   └── mcp-client/          ← ADK agent (adk web)
+│
+└── smoke_test.py            ← Kiểm tra nhanh các phần không cần key
 ```
+
+> **Lưu ý phiên bản MCP SDK:** module 01–03 dùng root venv (MCP **2.x**, API
+> `MCPServer`); module 04 dùng venv riêng qua `uv` (MCP **1.x**, API `FastMCP`).
+> Hai môi trường tách biệt nên không xung đột.
 
 ## Quick start
 
@@ -36,8 +48,8 @@ pip install -r requirements.txt
 # MCP demo (không cần API key)
 cd 02-mcp-basics && python weather_client.py
 
-# Function Calling (cần Gemini API key)
-export GEMINI_API_KEY=...
+# Function Calling (cần OpenAI API key)
+export OPENAI_API_KEY=...
 cd 01-function-calling && python weather_function_calling.py
 
 # Production — Auth (2 terminal)
@@ -99,7 +111,7 @@ LLM tổng hợp câu trả lời
 
 Cùng một tool `get_weather`, dưới đây là hai cách triển khai để thấy rõ sự khác biệt.
 
-### [Cách 1 — Function Calling thuần (Google Gemini SDK)](01-function-calling/)
+### [Cách 1 — Function Calling thuần (OpenAI SDK)](01-function-calling/)
 
 Tool được **định nghĩa và thực thi ngay trong app**. Model chỉ quyết định gọi tool nào, app tự chạy và đưa kết quả trở lại.
 
@@ -167,7 +179,7 @@ MCP server phục vụ qua **HTTP** cho nhiều client → cần xác thực. MC
 
 - Server: cấu hình `AuthSettings` + implement `TokenVerifier` protocol
 - Client: gửi header `Authorization: Bearer <token>` qua `httpx.AsyncClient`
-- Không có token → 401, token sai → 403, logic tool không biết gì về auth
+- Không có token → 401, token sai → 401, logic tool không biết gì về auth
 
 | Tầng | Demo (stdio) | Production (HTTP) |
 |---|---|---|

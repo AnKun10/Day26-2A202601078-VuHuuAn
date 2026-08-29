@@ -15,13 +15,72 @@ USER_AGENT = "weather-app/1.0"
 # Get API key from environment variable
 API_KEY = os.getenv("WEATHERAPI_KEY")
 
+# Khi chưa cấu hình WEATHERAPI_KEY, server chạy ở CHẾ ĐỘ DEMO với dữ liệu giả
+# (đủ để chạy thử agent end-to-end mà không cần key trả phí).
+DEMO_MODE = not API_KEY
+
+# --- Dữ liệu giả cho DEMO_MODE (nhiệt độ °C; °F được tính tự động) ---
+_MOCK_CITIES: dict[str, dict[str, Any]] = {
+    "hanoi":     {"name": "Hanoi",     "country": "Vietnam",   "temp_c": 29, "cond": "Light rain",   "hum": 82, "wind": 12, "dir": "SE", "rain": 70},
+    "haiphong":  {"name": "Haiphong",  "country": "Vietnam",   "temp_c": 33, "cond": "Rain showers", "hum": 79, "wind": 15, "dir": "S",  "rain": 80},
+    "danang":    {"name": "Da Nang",   "country": "Vietnam",   "temp_c": 30, "cond": "Cloudy",       "hum": 78, "wind": 10, "dir": "E",  "rain": 40},
+    "brisbane":  {"name": "Brisbane",  "country": "Australia", "temp_c": 26, "cond": "Sunny",        "hum": 55, "wind": 18, "dir": "NE", "rain": 10},
+    "sydney":    {"name": "Sydney",    "country": "Australia", "temp_c": 22, "cond": "Partly cloudy","hum": 60, "wind": 20, "dir": "S",  "rain": 20},
+    "tokyo":     {"name": "Tokyo",     "country": "Japan",     "temp_c": 24, "cond": "Clear",        "hum": 58, "wind": 14, "dir": "NW", "rain": 15},
+}
+_DEFAULT_MOCK = {"name": None, "country": "Demo", "temp_c": 28, "cond": "Fair", "hum": 65, "wind": 11, "dir": "E", "rain": 30}
+
+
+def _c_to_f(c: float) -> float:
+    return round(c * 9 / 5 + 32, 1)
+
+
+def _mock_response(endpoint: str, params: dict[str, str]) -> dict[str, Any]:
+    """Sinh JSON giả theo đúng schema WeatherAPI để tái dùng code định dạng bên dưới."""
+    city_q = params.get("q", "Unknown")
+    base = _MOCK_CITIES.get(city_q.lower().strip(), {**_DEFAULT_MOCK, "name": city_q})
+    location = {"name": base["name"], "region": "", "country": base["country"]}
+    temp_c = base["temp_c"]
+
+    if endpoint == "current.json":
+        return {
+            "location": location,
+            "current": {
+                "temp_c": temp_c, "temp_f": _c_to_f(temp_c),
+                "feelslike_c": temp_c + 1, "feelslike_f": _c_to_f(temp_c + 1),
+                "condition": {"text": base["cond"]},
+                "humidity": base["hum"],
+                "wind_kph": base["wind"], "wind_mph": round(base["wind"] / 1.609, 1), "wind_dir": base["dir"],
+                "pressure_mb": 1010, "uv": 6, "vis_km": 10,
+                "last_updated": "DEMO (dữ liệu giả)",
+            },
+        }
+
+    # forecast.json
+    days = min(int(params.get("days", "3")), 3)
+    forecastday = []
+    for i in range(days):
+        hi = temp_c + i
+        lo = temp_c - 4 + i
+        forecastday.append({
+            "date": f"Day +{i + 1}",
+            "day": {
+                "maxtemp_c": hi, "maxtemp_f": _c_to_f(hi),
+                "mintemp_c": lo, "mintemp_f": _c_to_f(lo),
+                "condition": {"text": base["cond"]},
+                "daily_chance_of_rain": base["rain"],
+                "maxwind_kph": base["wind"] + 4, "uv": 6,
+            },
+        })
+    return {"location": location, "forecast": {"forecastday": forecastday}}
+
+
 async def make_weather_request(endpoint: str, params: dict[str, str]) -> dict[str, Any] | None:
     """Make a request to the WeatherAPI with proper error handling."""
-    # Check if API key is set
+    # Chưa có key → trả dữ liệu DEMO thay vì lỗi, để agent vẫn chạy được
     if not API_KEY:
-        print("ERROR: WeatherAPI key not set. Please set WEATHERAPI_KEY environment variable.")
-        return None
-        
+        return _mock_response(endpoint, params)
+
     headers = {
         "User-Agent": USER_AGENT,
     }
@@ -60,14 +119,13 @@ async def get_current_weather(city: str) -> str:
     data = await make_weather_request("current.json", params)
 
     if not data:
-        if not API_KEY:
-            return f"❌ WeatherAPI key not configured. Please set WEATHERAPI_KEY environment variable with your API key from weatherapi.com"
         return f"Unable to fetch current weather data for {city}. Please check the city name and API key configuration."
 
     current = data["current"]
     location = data["location"]
-    
-    return f"""
+    banner = "⚠️ DEMO DATA (WEATHERAPI_KEY chưa cấu hình — dữ liệu giả)\n" if DEMO_MODE else ""
+
+    return f"""{banner}
 Current Weather for {location['name']}, {location['region']}, {location['country']}:
 
 Temperature: {current['temp_c']}°C ({current['temp_f']}°F)
@@ -103,14 +161,14 @@ async def get_forecast(city: str, days: int = 3) -> str:
     data = await make_weather_request("forecast.json", params)
 
     if not data:
-        if not API_KEY:
-            return f"❌ WeatherAPI key not configured. Please set WEATHERAPI_KEY environment variable with your API key from weatherapi.com"
         return f"Unable to fetch forecast data for {city}. Please check the city name and API key configuration."
 
     location = data["location"]
     forecast_days = data["forecast"]["forecastday"]
-    
+
     forecasts = []
+    if DEMO_MODE:
+        forecasts.append("⚠️ DEMO DATA (WEATHERAPI_KEY chưa cấu hình — dữ liệu giả)")
     forecasts.append(f"Weather Forecast for {location['name']}, {location['region']}, {location['country']}:")
     
     for day in forecast_days:
@@ -137,6 +195,9 @@ async def health_check() -> str:
 
 print("✅ MCP server initialized with Streamable HTTP transport")
 print("🔧 Available tools: get_current_weather, get_forecast, health_check")
+if DEMO_MODE:
+    print("⚠️  DEMO MODE: WEATHERAPI_KEY chưa cấu hình → dùng dữ liệu giả. "
+          "Đặt WEATHERAPI_KEY để lấy dữ liệu thật từ weatherapi.com")
 
 if __name__ == "__main__":
     import sys

@@ -32,13 +32,13 @@ ADK (Agent Development Kit) đóng vai trò **MCP Client**
 │     McpToolset → tự hỏi server "anh có tool gì?"                │
 │     → nhận về: get_current_weather, get_forecast, health_check  │
 │                                                                 │
-│  3. TRUYỀN tools cho LLM (Gemini)                               │
-│     Agent(model="gemini-2.5-flash", tools=[weather_tools])      │
-│     → Gemini biết nó có thể gọi 3 tools trên                    │
+│  3. TRUYỀN tools cho LLM (OpenAI qua LiteLLM)                   │
+│     Agent(model=LiteLlm("openai/gpt-4o-mini"), tools=[...])     │
+│     → model biết nó có thể gọi 3 tools trên                     │
 │                                                                 │
 │  4. ĐIỀU PHỐI vòng lặp Function Calling                         │
-│     User hỏi → Gemini chọn tool → ADK gọi MCP Server            │
-│     → nhận kết quả → đưa lại cho Gemini tổng hợp                │
+│     User hỏi → model chọn tool → ADK gọi MCP Server             │
+│     → nhận kết quả → đưa lại cho model tổng hợp                 │
 │                                                                 │
 │  5. CUNG CẤP giao diện web (adk web)                            │
 │     → http://localhost:8000 để chat với agent                   │
@@ -56,7 +56,7 @@ So với bài 02 (viết client thủ công bằng `mcp.ClientSession`), ADK gi�
 cd mcp-server
 uv sync
 
-# Set your WeatherAPI key (get one free at https://weatherapi.com)
+# (TUỲ CHỌN) Set your WeatherAPI key for REAL data (get one free at https://weatherapi.com)
 export WEATHERAPI_KEY="your_weatherapi_key"
 
 # Start the server (runs on port 8085 by default)
@@ -65,14 +65,19 @@ uv run python weather.py
 
 The server will be available at `http://localhost:8085/mcp`.
 
+> **DEMO MODE:** Nếu **không** đặt `WEATHERAPI_KEY`, server tự chạy ở chế độ demo
+> với dữ liệu giả (có nhãn `⚠️ DEMO DATA`) cho các thành phố Hanoi, Haiphong,
+> Danang, Brisbane, Sydney, Tokyo... — đủ để chạy thử toàn bộ agent end-to-end
+> mà không cần key trả phí. Đặt `WEATHERAPI_KEY` để lấy dữ liệu thật.
+
 ### 2. ADK Agent (Client)
 
 ```bash
 cd mcp-client
 uv sync
 
-# Create .env file with your Gemini API key
-echo "GOOGLE_API_KEY=your_gemini_api_key" > .env
+# Create .env file with your OpenAI API key
+echo "OPENAI_API_KEY=your_openai_api_key" > .env
 
 # Start ADK web interface
 uv run adk web
@@ -85,5 +90,5 @@ Open http://localhost:8000 in your browser, select `weather_agent`, and ask abou
 | Variable | Where | Description |
 |----------|-------|-------------|
 | `WEATHERAPI_KEY` | mcp-server | API key from weatherapi.com |
-| `GOOGLE_API_KEY` | mcp-client/.env | Gemini API key |
+| `OPENAI_API_KEY` | mcp-client/.env | OpenAI API key (model qua LiteLLM) |
 | `PORT` | mcp-server (env) | Override server port (default: 8085) |
